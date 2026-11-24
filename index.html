@@ -1,0 +1,143 @@
+AgendaLink (Directorio Web Profesional con Gestión de Contactos Interactivos)
+Incluye validación en tiempo real de correo electrónico y teléfono de 10 dígitos, edición en línea directa de tarjetas de perfil y persistencia local.
+
+HTML
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgendaLink | Directorio Profesional</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f3f4f6; color: #1f2937; margin: 0; padding: 15px; }
+        .container { max-width: 780px; margin: auto; background: #fff; padding: 22px; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+        h2 { color: #1d4ed8; margin-top: 0; border-bottom: 2px solid #eff6ff; padding-bottom: 8px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 10px; }
+        label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #4b5563; }
+        input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px; box-sizing: border-box; font-size: 13px; }
+        input.invalido { border-color: #dc2626; background: #fef2f2; }
+        .msg-val { font-size: 12px; color: #dc2626; margin-bottom: 10px; display: none; font-weight: bold; }
+        button { padding: 9px 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: #fff; font-size: 13px; }
+        .btn-save { background: #1d4ed8; width: 100%; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 18px; }
+        .profile-card { border: 1px solid #dbeafe; background: #f8fafc; border-radius: 8px; padding: 14px; position: relative; }
+        .profile-card h4 { margin: 0 0 4px 0; color: #1e3a8a; font-size: 15px; }
+        .role-tag { display: inline-block; background: #dbeafe; color: #1e40af; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; margin-bottom: 8px; }
+        .profile-card p { margin: 4px 0; font-size: 13px; color: #374151; }
+        .card-actions { margin-top: 10px; display: flex; gap: 6px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>📇 AgendaLink: Directorio Profesional Interactivo</h2>
+    <input type="hidden" id="editId" value="">
+
+    <div class="form-grid">
+        <div><label>Nombre Completo:</label><input type="text" id="nombre" placeholder="Ej. Laura Méndez"></div>
+        <div><label>Especialidad / Puesto:</label><input type="text" id="puesto" placeholder="Ej. Desarrolladora Web"></div>
+        <div><label>Teléfono (10 dígitos):</label><input type="text" id="telefono" oninput="validarEnVivo()" placeholder="8711234567" maxlength="10"></div>
+        <div><label>Correo Institucional:</label><input type="email" id="correo" oninput="validarEnVivo()" placeholder="laura@empresa.com"></div>
+    </div>
+
+    <div id="alertaValidacion" class="msg-val">⚠️ Verifica que el teléfono tenga 10 números y el correo incluya "@" y dominio.</div>
+    <button class="btn-save" id="btnGuardar" onclick="guardarContacto()">+ Guardar Perfil Profesional</button>
+
+    <div class="cards-grid" id="directorioGrid"></div>
+</div>
+
+<script>
+    function getContactos() { return JSON.parse(localStorage.getItem("agendalink_502")) || []; }
+    function setContactos(c) { localStorage.setItem("agendalink_502", JSON.stringify(c)); }
+
+    function validarEnVivo() {
+        const tel = document.getElementById("telefono").value.trim();
+        const email = document.getElementById("correo").value.trim();
+        const telOk = tel === "" || /^[0-9]{10}$/.test(tel);
+        const emailOk = email === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+        document.getElementById("telefono").className = telOk ? "" : "invalido";
+        document.getElementById("correo").className = emailOk ? "" : "invalido";
+        document.getElementById("alertaValidacion").style.display = (telOk && emailOk) ? "none" : "block";
+        return telOk && emailOk;
+    }
+
+    function guardarContacto() {
+        const nombre = document.getElementById("nombre").value.trim();
+        const puesto = document.getElementById("puesto").value.trim();
+        const telefono = document.getElementById("telefono").value.trim();
+        const correo = document.getElementById("correo").value.trim();
+        const editId = document.getElementById("editId").value;
+
+        if (!nombre || !puesto || !telefono || !correo) {
+            alert("Todos los campos del perfil son obligatorios.");
+            return;
+        }
+        if (!/^[0-9]{10}$/.test(telefono) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+            alert("Corrige el formato del teléfono (10 dígitos) o correo electrónico.");
+            return;
+        }
+
+        let lista = getContactos();
+        if (editId) {
+            const idx = lista.findIndex(c => c.id == editId);
+            if (idx !== -1) lista[idx] = { id: Number(editId), nombre, puesto, telefono, correo };
+            document.getElementById("editId").value = "";
+            document.getElementById("btnGuardar").innerText = "+ Guardar Perfil Profesional";
+        } else {
+            lista.push({ id: Date.now(), nombre, puesto, telefono, correo });
+        }
+
+        setContactos(lista);
+        limpiar();
+        renderDirectorio();
+    }
+
+    function cargarEdicion(id) {
+        const c = getContactos().find(item => item.id === id);
+        if (!c) return;
+        document.getElementById("nombre").value = c.nombre;
+        document.getElementById("puesto").value = c.puesto;
+        document.getElementById("telefono").value = c.telefono;
+        document.getElementById("correo").value = c.correo;
+        document.getElementById("editId").value = c.id;
+        document.getElementById("btnGuardar").innerText = "💾 Actualizar Perfil";
+    }
+
+    function eliminarContacto(id) {
+        if (confirm("¿Eliminar este contacto profesional?")) {
+            setContactos(getContactos().filter(c => c.id !== id));
+            renderDirectorio();
+        }
+    }
+
+    function limpiar() {
+        document.getElementById("nombre").value = "";
+        document.getElementById("puesto").value = "";
+        document.getElementById("telefono").value = "";
+        document.getElementById("correo").value = "";
+    }
+
+    function renderDirectorio() {
+        const lista = getContactos();
+        const grid = document.getElementById("directorioGrid");
+        grid.innerHTML = lista.length ? "" : "<p style='color:#6b7280; text-align:center; grid-column:1/-1;'>No hay perfiles registrados en el directorio.</p>";
+
+        lista.forEach(c => {
+            grid.innerHTML += `
+                <div class="profile-card">
+                    <h4>${c.nombre}</h4>
+                    <span class="role-tag">${c.puesto}</span>
+                    <p>📞 ${c.telefono}</p>
+                    <p>✉️ ${c.correo}</p>
+                    <div class="card-actions">
+                        <button onclick="cargarEdicion(${c.id})" style="background:#f59e0b; color:#000; padding:5px 10px; font-size:12px;">Editar</button>
+                        <button onclick="eliminarContacto(${c.id})" style="background:#dc2626; padding:5px 10px; font-size:12px;">Eliminar</button>
+                    </div>
+                </div>`;
+        });
+    }
+    renderDirectorio();
+</script>
+</body>
+</html>
